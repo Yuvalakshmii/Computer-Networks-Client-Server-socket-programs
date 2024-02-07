@@ -1,137 +1,121 @@
-/* write a c program for character encoding using socket. first connect client and sever. secondly, in client side it should take input data example: SCOPE, then in server side it should get the received data from client "SCOPE". 3rd thing is the data should be encoded in server side by replacing the received data from client with third letter from the received letter. example: received from client: SCOPE; encoded data: VFRSH. 4th thing is the encoded data in server side should be received by client and print it. */
+/* write a c program for character encoding using socket. first connect client and sever.
+secondly, in client side it should take input data ,example: SCOPE, then in server side it should receive the data from client i.e., "SCOPE". 
+The work in server side is to encode the data recieved by replacing the data with it corresponding third letter from the received data's letter. 
+example: received from client: SCOPE; encoded data: VFRSH. 
+4th thing is the encoded data in server side should be transmitted to client and client should print it. */
 
 /* server */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <netdb.h>
 #include <unistd.h>
-#include <netinet/in.h>
-
+#include <arpa/inet.h>
 
 #define PORT 8080
-#define MAX_BUFFER_SIZE 1024
 
-char encodeCharacter(char c) {
-    // Replace the character with the third letter from it
-    if (c >= 'A' && c <= 'Z') {
-        c += 3;
-        if (c > 'Z') {
-            c -= 26;
-        }
+char encodeData(char ch) {
+    if (ch >= 'A' && ch <= 'Z') {
+        ch = ((ch - 'A' + 3) % 26) + 'A';
+    } else if (ch >= 'a' && ch <= 'z') {
+        ch = ((ch - 'a' + 3) % 26) + 'a';
     }
-    return c;
+    return ch;
 }
 
 int main() {
-    int serverSocket, newSocket, valread;
-    struct sockaddr_in serverAddr;
-    int addrLen = sizeof(serverAddr);
-    char buffer[MAX_BUFFER_SIZE] = {0};
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+    char data[100];
+    char encodedData[100];
 
-    // Create a socket
-    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Socket creation failed");
-        exit(EXIT_FAILURE);
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        printf("Socket creation failed\n");
+        return -1;
     }
 
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(PORT);
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
 
-    // Bind the socket to a specific address and port
-    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Bind failed");
-        exit(EXIT_FAILURE);
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        printf("Socket binding failed\n");
+        return -1;
     }
 
-    // Listen for connections
-    if (listen(serverSocket, 3) < 0) {
-        perror("Listen failed");
-        exit(EXIT_FAILURE);
+    if (listen(server_fd, 3) < 0) {
+        printf("Listening failed\n");
+        return -1;
     }
 
-    // Accept a new connection
-    if ((newSocket = accept(serverSocket, (struct sockaddr *)&serverAddr, (socklen_t *)&addrLen)) < 0) {
-        perror("Accept failed");
-        exit(EXIT_FAILURE);
+    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
+        printf("Acceptance failed\n");
+        return -1;
     }
 
-    // Receive data from the client
-    valread = fread(newSocket, buffer, MAX_BUFFER_SIZE);
-    printf("Received Data from Client: %s\n", buffer);
+    memset(data, 0, sizeof(data));
+    read(new_socket, data, sizeof(data));
 
-    // Encode the data
-    for (int i = 0; i < strlen(buffer); i++) {
-        buffer[i] = encodeCharacter(buffer[i]);
+    for (int i = 0; i < strlen(data); i++) {
+        encodedData[i] = encodeData(data[i]);
     }
 
-    // Send the encoded data back to the client
-    send(newSocket, buffer, strlen(buffer), 0);
-    printf("Encoded Data Sent to Client: %s\n", buffer);
+    send(new_socket, encodedData, strlen(encodedData), 0);
+
+    printf("Encoded data sent to client: %s\n", encodedData);
+
+    close(new_socket);
+    close(server_fd);
 
     return 0;
 }
 
-=========================================================================================
-/*client */
+====================
+/* client */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <netdb.h>
 #include <unistd.h>
-#include <netinet/in.h>
-
+#include <arpa/inet.h>
 
 #define PORT 8080
-#define MAX_BUFFER_SIZE 1024
 
 int main() {
-    int clientSocket, valread;
-    struct sockaddr_in serverAddr;
-    char buffer[MAX_BUFFER_SIZE] = {0};
+    int sock = 0;
+    struct sockaddr_in serv_addr;
+    char data[100];
 
-    // Create a socket
-    if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Socket creation failed");
-        exit(EXIT_FAILURE);
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("Socket creation error\n");
+        return -1;
     }
 
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
 
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if (inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr) <= 0) {
-        perror("Invalid address/ Address not supported");
-        exit(EXIT_FAILURE);
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+        printf("Invalid address/ Address not supported\n");
+        return -1;
     }
 
-    // Connect to the server
-    if (connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Connection failed");
-        exit(EXIT_FAILURE);
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        printf("Connection failed\n");
+        return -1;
     }
 
-    // Take input data from the user
-    printf("Enter data: ");
-    fgets(buffer, MAX_BUFFER_SIZE, stdin);
+    printf("Enter the data: ");
+    scanf("%s", data);
 
-    // Send the data to the server
-    send(clientSocket, buffer, strlen(buffer), 0);
+    send(sock, data, strlen(data), 0);
 
-    // Receive the encoded data from the server
-    valread = read(clientSocket, buffer, MAX_BUFFER_SIZE);
-    printf("Received Encoded Data from Server: %s\n", buffer);
+    char encodedData[100];
+    memset(encodedData, 0, sizeof(encodedData));
+    read(sock, encodedData, sizeof(encodedData));
+
+    printf("Encoded data received from server: %s\n", encodedData);
+
+    close(sock);
 
     return 0;
 }
