@@ -4,7 +4,8 @@ The work in server side is to encode the data recieved by replacing the data wit
 example: received from client: SCOPE; encoded data: VFRSH. 
 4th thing is the encoded data in server side should be transmitted to client and client should print it. */
 
-/* server */
+// server
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,12 +13,13 @@ example: received from client: SCOPE; encoded data: VFRSH.
 #include <arpa/inet.h>
 
 #define PORT 8080
+#define MAX_BUFFER_SIZE 100
 
-char encodeData(char ch) {
+char encodeData(char ch, int shift) {
     if (ch >= 'A' && ch <= 'Z') {
-        ch = ((ch - 'A' + 3) % 26) + 'A';
+        ch = ((ch - 'A' + shift) % 26) + 'A';
     } else if (ch >= 'a' && ch <= 'z') {
-        ch = ((ch - 'a' + 3) % 26) + 'a';
+        ch = ((ch - 'a' + shift) % 26) + 'a';
     }
     return ch;
 }
@@ -26,8 +28,9 @@ int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
-    char data[100];
-    char encodedData[100];
+    char receivedData[MAX_BUFFER_SIZE];
+    char encodedData[MAX_BUFFER_SIZE];
+    int shift = 3; // Define the shift value
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         printf("Socket creation failed\n");
@@ -53,15 +56,16 @@ int main() {
         return -1;
     }
 
-    memset(data, 0, sizeof(data));
-    read(new_socket, data, sizeof(data));
+    memset(receivedData, 0, sizeof(receivedData));
+    read(new_socket, receivedData, sizeof(receivedData));
+    printf("Data received from client: %s\n", receivedData);
 
-    for (int i = 0; i < strlen(data); i++) {
-        encodedData[i] = encodeData(data[i]);
+    for (int i = 0; receivedData[i] != '\0'; i++) {
+        encodedData[i] = encodeData(receivedData[i], shift);
     }
+    encodedData[strlen(receivedData)] = '\0'; // Add null character at the end of the encoded data
 
     send(new_socket, encodedData, strlen(encodedData), 0);
-
     printf("Encoded data sent to client: %s\n", encodedData);
 
     close(new_socket);
@@ -69,9 +73,8 @@ int main() {
 
     return 0;
 }
-
 ====================
-/* client */
+// client
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,14 +83,17 @@ int main() {
 #include <arpa/inet.h>
 
 #define PORT 8080
+#define MAX_BUFFER_SIZE 100
 
 int main() {
     int sock = 0;
     struct sockaddr_in serv_addr;
-    char data[100];
+    char data[MAX_BUFFER_SIZE];
+    char receivedData[MAX_BUFFER_SIZE];
+    int shift = 3; // Define the shift value
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("Socket creation error\n");
+        printf("Socket creation failed\n");
         return -1;
     }
 
@@ -104,19 +110,18 @@ int main() {
         return -1;
     }
 
-    printf("Enter the data: ");
-    scanf("%s", data);
+    printf("Enter data to send: ");
+    fgets(data, sizeof(data), stdin);
+    data[strcspn(data, "\n")] = '\0'; // Remove the newline character from input
 
     send(sock, data, strlen(data), 0);
+    printf("Data sent to server: %s\n", data);
 
-    char encodedData[100];
-    memset(encodedData, 0, sizeof(encodedData));
-    read(sock, encodedData, sizeof(encodedData));
-
-    printf("Encoded data received from server: %s\n", encodedData);
+    memset(receivedData, 0, sizeof(receivedData));
+    read(sock, receivedData, sizeof(receivedData));
+    printf("Encoded data received from server: %s\n", receivedData);
 
     close(sock);
 
     return 0;
 }
-
