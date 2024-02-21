@@ -11,7 +11,7 @@
 void calculateCRC(char data[], char divisor[], char crc[]) {
     int dataLen = strlen(data);
     int divisorLen = strlen(divisor);
-
+    
     // Append zeros to the data
     for (int i = 0; i < divisorLen - 1; i++) {
         data[dataLen + i] = '0';
@@ -62,8 +62,8 @@ int main() {
         printf("Acceptance failed\n");
         return -1;
     }
-
-    read(new_socket, buffer, 1024);
+   
+    read(new_socket, buffer, sizeof(buffer));
     sscanf(buffer, "%s\n%s", data, divisor);
 
     calculateCRC(data, divisor, crc);
@@ -75,7 +75,8 @@ int main() {
 
     return 0;
 }
-==================================
+
+====================
 /* CRC client */
 
 #include <stdio.h>
@@ -127,24 +128,3 @@ int main() {
 
     return 0;
 }
-
-
-
-
-
-
-https://asecuritysite.com/comms/crc_div
-/*write a c program of Cyclic redundancy check (CRC) to print the codeword on server side.
-1. On client side, it should get input of data and divisor, which should be transmitted to serever to perform CRC calculation on server side.
-2. on server side, it should output the codeword(data+CRC), whee CRC is the last three digits of the codeword.
-input:
-enter data: 1001
-enter divisor: 1011
-
-output:
-codeword: 1001110
-
-the CRC in the output is last three digit: 110
-*/
-
-
