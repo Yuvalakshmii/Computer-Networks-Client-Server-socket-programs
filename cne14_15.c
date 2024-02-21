@@ -4,7 +4,7 @@ The work in server side is to encode the data recieved by replacing the data wit
 example: received from client: SCOPE; encoded data: VFRSH. 
 4th thing is the encoded data in server side should be transmitted to client and client should print it. */
 
-// server
+/* CRC server */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,24 +13,37 @@ example: received from client: SCOPE; encoded data: VFRSH.
 #include <arpa/inet.h>
 
 #define PORT 8080
-#define MAX_BUFFER_SIZE 100
 
-char encodeData(char ch, int shift) {
-    if (ch >= 'A' && ch <= 'Z') {
-        ch = ((ch - 'A' + shift) % 26) + 'A';
-    } else if (ch >= 'a' && ch <= 'z') {
-        ch = ((ch - 'a' + shift) % 26) + 'a';
+void calculateCRC(char data[], char divisor[], char crc[]) {
+    int dataLen = strlen(data);
+    int divisorLen = strlen(divisor);
+    
+    // Append zeros to the data
+    for (int i = 0; i < divisorLen - 1; i++) {
+        data[dataLen + i] = '0';
     }
-    return ch;
+
+    // Perform division
+    for (int i = 0; i < dataLen; i++) {
+        if (data[i] == '1') {
+            for (int j = 0; j < divisorLen; j++) {
+                data[i + j] = (data[i + j] == divisor[j]) ? '0' : '1';
+            }
+        }
+    }
+
+    strncpy(crc, &data[dataLen], divisorLen - 1);
+    crc[divisorLen - 1] = '\0';
 }
 
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
-    char receivedData[MAX_BUFFER_SIZE];
-    char encodedData[MAX_BUFFER_SIZE];
-    int shift = 3; // Define the shift value
+    char buffer[1024] = {0};
+    char data[100];
+    char divisor[100];
+    char crc[100];
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         printf("Socket creation failed\n");
@@ -55,26 +68,22 @@ int main() {
         printf("Acceptance failed\n");
         return -1;
     }
+   
+    read(new_socket, buffer, sizeof(buffer));
+    sscanf(buffer, "%s\n%s", data, divisor);
 
-    memset(receivedData, 0, sizeof(receivedData));
-    read(new_socket, receivedData, sizeof(receivedData));
-    printf("Data received from client: %s\n", receivedData);
+    calculateCRC(data, divisor, crc);
 
-    for (int i = 0; receivedData[i] != '\0'; i++) {
-        encodedData[i] = encodeData(receivedData[i], shift);
-    }
-    encodedData[strlen(receivedData)] = '\0'; // Add null character at the end of the encoded data
-
-    send(new_socket, encodedData, strlen(encodedData), 0);
-    printf("Encoded data sent to client: %s\n", encodedData);
+    printf("Calculated CRC is: %s\n", crc);
 
     close(new_socket);
     close(server_fd);
 
     return 0;
 }
+
 ====================
-// client
+/* CRC client */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,17 +92,15 @@ int main() {
 #include <arpa/inet.h>
 
 #define PORT 8080
-#define MAX_BUFFER_SIZE 100
 
 int main() {
     int sock = 0;
     struct sockaddr_in serv_addr;
-    char data[MAX_BUFFER_SIZE];
-    char receivedData[MAX_BUFFER_SIZE];
-    int shift = 3; // Define the shift value
+    char data[100];
+    char divisor[100];
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("Socket creation failed\n");
+        printf("Socket creation error\n");
         return -1;
     }
 
@@ -110,16 +117,18 @@ int main() {
         return -1;
     }
 
-    printf("Enter data to send: ");
-    fgets(data, sizeof(data), stdin);
-    data[strcspn(data, "\n")] = '\0'; // Remove the newline character from input
+    printf("Enter the data: ");
+    scanf("%s", data);
 
-    send(sock, data, strlen(data), 0);
-    printf("Data sent to server: %s\n", data);
+    printf("Enter the divisor: ");
+    scanf("%s", divisor);
 
-    memset(receivedData, 0, sizeof(receivedData));
-    read(sock, receivedData, sizeof(receivedData));
-    printf("Encoded data received from server: %s\n", receivedData);
+    char message[200];
+    sprintf(message, "%s\n%s", data, divisor);
+
+    send(sock, message, strlen(message), 0);
+
+    printf("Data and divisor sent to the server\n");
 
     close(sock);
 
