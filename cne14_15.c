@@ -3,7 +3,7 @@ secondly, in client side it should take input data ,example: SCOPE, then in serv
 The work in server side is to encode the data recieved by replacing the data with it corresponding third letter from the received data's letter. 
 example: received from client: SCOPE; encoded data: VFRSH. 
 4th thing is the encoded data in server side should be transmitted to client and client should print it. */
-
+ 
 /* CRC server */
 
 #include <stdio.h>
